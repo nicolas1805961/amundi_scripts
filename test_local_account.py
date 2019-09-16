@@ -1,4 +1,5 @@
 import netmiko
+import paramiko
 from getpass import getpass
 import os
 import logging
@@ -7,7 +8,8 @@ import sys
 password = "OmS&H1N1!" #getpass("Enter password: ")
 secret = "Dinai0!!" #getpass("Enter enable password: ")
 
-netmiko_exception = (netmiko.ssh_exception.NetMikoTimeoutException,                                    netmiko.ssh_exception.NetMikoAuthenticationException)
+netmiko_exception = (paramiko.ssh_exception.NoValidConnectionsError,                                netmiko.ssh_exception.NetMikoTimeoutException,                                  netmiko.ssh_exception.NetMikoAuthenticationException,
+                    ValueError)
 devices = []
 dico = {}
 
@@ -27,27 +29,23 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
         device["username"] = "network"
         device["secret"] = secret
         device["device_type"] = "autodetect"
-
-        guesser = netmiko.SSHDetect(**device)
-
-        print(device)
-        sys.exit(0)
-
-        best_match = guesser.autodetect()
-        if best_match is None:
-            print("Error {}: can not find device type\n".format(device["host"]))
-            continue
-        else:
-            device["device_type"] = best_match
-
-        device["global_delay_factor"] = 6
-        logger.info("connecting to {}\n".format(device["ip"]))
+        device["session_log"] = "dmz1_output.txt"
+        device["global_delay_factor"] = 4
+        #device["blocking_timeout"] = 16
         try:
+            guesser = netmiko.SSHDetect(**device)
+            best_match = guesser.autodetect()
+            if best_match is None:
+                wrong_file.write("Error {}: can not find device type\n".format(device["ip"]))
+                continue
+            else:
+                device["device_type"] = best_match
+            logger.info("connecting to {} ...\n".format(device["ip"]))
             connect = netmiko.ConnectHandler(**device)
             connect.enable()
         except netmiko_exception as e:
             wrong_file.write("Failed connexion to: {} {}\n".format(device["ip"], e))
         else:
-            correct_file.write("Connected to: \n", device["ip"])
-        connect.disconnect()
+            correct_file.write("Connected to: {}".format(device["ip"]))
+            connect.disconnect()
 logger.info("finished\n")
