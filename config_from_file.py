@@ -15,7 +15,7 @@ dico = {}
 
 logging.basicConfig(format = "[%(levelname)s]: %(asctime)s %(message)s", level = logging.INFO)
 
-with open("file", "r") as input_file:
+with open("correct_file", "r") as input_file:
     list_of_switches = input_file.readlines()
 
 for switch in list_of_switches:
@@ -44,6 +44,8 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
             prompt = connect.find_prompt()
             if not prompt.endswith("#"):
                 connect.enable()
+            output = connect.send_config_from_file("")
+            print(output)
         except netmiko_exception as e:
             wrong_file.write(e)
         else:
