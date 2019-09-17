@@ -39,7 +39,6 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
                 continue
             else:
                 device["device_type"] = best_match
-            logging.info("connecting to {} ...\n".format(device["ip"]))
             connect = netmiko.ConnectHandler(**device)
             prompt = connect.find_prompt()
             if not prompt.endswith("#"):
@@ -47,6 +46,5 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
         except netmiko_exception as e:
             wrong_file.write(e)
         else:
-            correct_file.write("Connected to: {}".format(device["ip"]))
+            correct_file.write(device["ip"])
             connect.disconnect()
-logging.info("finished\n")
