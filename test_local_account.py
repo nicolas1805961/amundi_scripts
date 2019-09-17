@@ -35,6 +35,7 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
         try:
             guesser = netmiko.SSHDetect(**device)
             best_match = guesser.autodetect()
+            print(best_match)
             if best_match is None:
                 wrong_file.write("Error {}: can not find device type\n".format(device["ip"]))
                 continue
@@ -44,7 +45,7 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
             connect = netmiko.ConnectHandler(**device)
             connect.enable()
         except netmiko_exception as e:
-            wrong_file.write("Failed connexion to: {} {}\n".format(device["ip"], e))
+            wrong_file.write(e)
         else:
             correct_file.write("Connected to: {}".format(device["ip"]))
             connect.disconnect()
