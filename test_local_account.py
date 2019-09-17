@@ -13,7 +13,7 @@ netmiko_exception = (paramiko.ssh_exception.NoValidConnectionsError,            
 devices = []
 dico = {}
 
-logging.basicConfig(format = "[%(levelname)s]: %(asctime)s %(message)s", level = logging.INFO)
+logging.basicConfig(filename = "logging_info", filemode = "w", format = "[%(levelname)s]: %(asctime)s %(message)s", level = logging.INFO)
 
 with open("file", "r") as input_file:
     list_of_switches = input_file.readlines()
