@@ -2,14 +2,15 @@ import paramiko
 from getpass import getpass
 import logging
 import time
+import socket
 
 #Mot de passe simple et mot de passe enable.
 password = "OmS&H1N1!"
 secret = "Dinai0!!"
 
 #Exceptions à "catcher" en cas d'erreur.
-paramiko_exception = (paramiko.ssh_exception.NoValidConnectionsError,
-                    ValueError)
+paramiko_exception = (paramiko.ssh_exception.NoValidConnectionsError,paramiko.ssh_exception.BadAuthenticationType,paramiko.ssh_exception.AuthenticationException,paramiko.ssh_exception.BadHostKeyException,paramiko.ssh_exception.ChannelException,paramiko.ssh_exception.PartialAuthentication,paramiko.ssh_exception.PasswordRequiredException,paramiko.ssh_exception.ProxyCommandFailure,paramiko.ssh_exception.SSHException,socket.timeout,
+ValueError)
 
 #Liste de dictionnaire avec chaque dictionnaire représentant un équipement.
 devices = []
@@ -20,12 +21,20 @@ dico = {}
 #Info à recevoir du shell intractif.
 s = ""
 
+list_of_ip = []
+
 #Initialisation du logging qui sera écrit dans le fichier "logging_info".
 logging.basicConfig(filename = "logging_info", filemode = "w", format = "[%(levelname)s]: %(asctime)s %(message)s", level = logging.INFO)
 
 #Ouverture du fichier des équipements et stockage de chaque équipement dans une liste.
 with open("file", "r") as input_file:
     list_of_switches = input_file.readlines()
+
+#del(list_of_switches[0])
+
+for i in list_of_switches:
+    temp_list = i.split()
+    list_of_ip.append(temp_list[0])
 
 #Ouverture du fichier des commandes et stockage dans une liste.
 """with open("", "r") as input_commands:
@@ -35,7 +44,7 @@ with open("file", "r") as input_file:
 nb = 0
 
 #Stockage de l'adresse ip de chaque équipement dans un dictionnaire différent. Tous les dictionnaire sont stockés dans la liste de dico "devices".
-for switch in list_of_switches:
+for switch in list_of_ip:
     dico["hostname"] = switch
     devices.append(dico.copy())
 #Ouverture du bon et du mauvais fichier.
@@ -49,8 +58,8 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
         #Bloc try/catch(except) pour "catcher" les erreurs.
         try:
             #Connection sur l'équipement device parmis la liste de "devices".
-            print(device)
-            ssh.connect(**device, allow_agent = False, look_for_keys = False, auth_timeout=5, banner_timeout=5)
+            print("Connecting to: {}".format(device["hostname"]))
+            ssh.connect(**device, allow_agent = False, look_for_keys = False, timeout=10, auth_timeout=5, banner_timeout=5)
             #On invoque le shell interractif
             channel = ssh.invoke_shell()
             #Boucle pour communiquer avec le shell de manière indéfinie, on traite chaque cas:
@@ -59,11 +68,14 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
                 """if nb == len(list_of_commands):
                     break"""
                 #Si le shell a des infos à nous envoyer on les récupèrent. Si on les a récupérés alors le code saute au prochain "if"(on ne tombe pas dans le "else").
-                if channel.recv_ready():
-                    s += channel.recv(4096).decode("UTF-8")
+                while not channel.exit_status_ready():
+                    if channel.recv_ready():
+                        s += channel.recv(1500).decode("UTF-8")
+
+                while channel.recv_ready():
+                        s += channel.recv(9999)
+                        print(s)
                     #Sinon on repart au début de la boucle où l'on demandera à nouveau au shell si il a des infos.
-                else:
-                    continue
                 #Si ce que nous a envoyé le shell ne se termine pas par "#" alors nous ne somme pas en mode enable et donc on passe en mode enable en envoyant "en" puis le mot de passe enable (secret). Une fois qu'on est en enable on repart au debut de la boucle pour recevoir ce qu'affiche le shell.
                 if not s.endswith("#"):
                     channel.send("en\n")
@@ -78,5 +90,5 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
                 nb += 1
         #On "catche" les exceptions en cas d'erreur et on les écrits dans le fichier des erreurs.
         except paramiko_exception as e:
-            wrong_file.write(str(e.errors))
+            wrong_file.write(str(e))
 ssh.close()
