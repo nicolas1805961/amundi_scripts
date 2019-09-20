@@ -1,9 +1,8 @@
 import paramiko
 from getpass import getpass
-import os
 import logging
-import sys
 import time
+
 #Mot de passe simple et mot de passe enable.
 password = "OmS&H1N1!"
 secret = "Dinai0!!"
@@ -42,15 +41,16 @@ for switch in list_of_switches:
 #Ouverture du bon et du mauvais fichier.
 with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong_file:
     #On itére sur chaque équipement et pour chaque équipement(dictionnaire) on ajoute le username et le password. Avant on avait juste l'adresse ip dans chaque dico cf ligne 32.
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
     for device in devices:
         device["username"] = "network"
         device["password"] = password
         #Bloc try/catch(except) pour "catcher" les erreurs.
         try:
             #Connection sur l'équipement device parmis la liste de "devices".
-            ssh = paramiko.SSHClient()
-            ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            ssh.connect(**device, allow_agent = False, look_for_keys = False)
+            print(device)
+            ssh.connect(**device, allow_agent = False, look_for_keys = False, auth_timeout=5, banner_timeout=5)
             #On invoque le shell interractif
             channel = ssh.invoke_shell()
             #Boucle pour communiquer avec le shell de manière indéfinie, on traite chaque cas:
@@ -64,11 +64,11 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
                     #Sinon on repart au début de la boucle où l'on demandera à nouveau au shell si il a des infos.
                 else:
                     continue
-                #Si ce que nous a envoyé le shell ne se termine pas par "#" alors nous ne somme pas en mode enable et donc on passe en mode enable en envoyant en puis le mot de passe enable (secret). Une fois qu'on est en enable on repart au debut de la boucle pour recevoir ce qu'affiche le shell.
+                #Si ce que nous a envoyé le shell ne se termine pas par "#" alors nous ne somme pas en mode enable et donc on passe en mode enable en envoyant "en" puis le mot de passe enable (secret). Une fois qu'on est en enable on repart au debut de la boucle pour recevoir ce qu'affiche le shell.
                 if not s.endswith("#"):
                     channel.send("en\n")
                     channel.send(str(secret) + "\n")
-                    time.sleep(5)
+                    time.sleep(0.5)
                     continue
                 #Si on arrive ici c'est qu'on est connecté en mode enable on peut donc l'écrire dans le bon fichier.
                 correct_file.write("Connected to {}".format(device["hostname"]))
@@ -78,4 +78,5 @@ with open("correct_file", "w") as correct_file, open("wrong_file", "w") as wrong
                 nb += 1
         #On "catche" les exceptions en cas d'erreur et on les écrits dans le fichier des erreurs.
         except paramiko_exception as e:
-            wrong_file.write(e)
+            wrong_file.write(str(e.errors))
+ssh.close()

@@ -1,7 +1,5 @@
-import os
 import subprocess
 import string
-import sys
 
 my_file = input("name of the file to read from: ")
 
