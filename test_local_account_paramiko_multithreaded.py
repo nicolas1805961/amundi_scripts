@@ -9,8 +9,9 @@ import queue
 from timeit import default_timer
 from multiprocessing.dummy import Process
 
-
+#Cette "class" permet de créer un objet "my_shell "qui va permettre de réaliser la connexion et d'envoyer les commandes de manière simplifiee. On retourne True quand il y a une erreur et False quand c'est ok
 class my_shell:
+    #Le constructeur qui initialise nos variables utilisee a travers le code
     def __init__(self, device, paramiko_exception):
         self.secret = "Dinai0!!"
         self.ssh = paramiko.SSHClient()
@@ -19,10 +20,10 @@ class my_shell:
         self.channel = paramiko.Channel(1)
         self.package = ()
         self.paramiko_exception = paramiko_exception
-
+    #Le destructeur appele lorsque l'objet meurt, on ferme la connexion lorsqu'il disparait
     def __del__(self):
         self.ssh.close()
-
+    #Methode de l'objet permettant de realiser la connexion. Si on a une erreur, on renvoit True et on met a jour la valeur du package.
     def init(self):
         try:
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
@@ -34,13 +35,13 @@ class my_shell:
             self.package = str(e) + ": " + self.device["hostname"] + "\n", "wrong_file"
             return True
         return False
-
+    #"Getter" pour avoir acces au package en dehors de la classe
     def get_package(self):
         return self.package
-
+    #"Setter" pour mettre a jour la valeur du package en dehors de la classe
     def set_package(self, message, file):
         self.package = message, file
-
+    #Methode pour attendre les infos du shell une fois que l'on a envoye le mot de passe.
     def wait_password_processing(self):
         a = self.s
         t = default_timer()
@@ -52,12 +53,12 @@ class my_shell:
             self.get_info()
             if self.s != a:
                 return False
-
+    #Methode pour recevoir les infos du shell
     def get_info(self):
         while self.channel.recv_ready():
             self.s += self.channel.recv(4096).decode("UTF-8")
             time.sleep(0.3)
-
+    #Methode pour verifier l'output de la commande "en", on traite chaque cas. Si on ne nous demande pas de mot de passe alors c'est qu'il y a eu un probleme
     def checking(self):
         while True:
             self.get_info()
@@ -67,7 +68,7 @@ class my_shell:
                 self.ssh.close()
                 self.package = "Can't enter enable mode, probably different OS: {} \n".format(self.device["hostname"]), "wrong_file"
                 return True
-
+    #Methode pour envoyer une commande au shell.Si le temps d'execution est superieur a "seconde" alors c'est trop long et on renvoit une erreur
     def send_command(self, cmd, seconds):
         a = self.s
         self.channel.send(cmd + "\n")
@@ -80,7 +81,7 @@ class my_shell:
             self.get_info()
             if self.s != a:
                 return False
-
+    #Methode pour entrer en mode enable. si l'output du shell ne se termine pas par "#" alors on est pas en mode enable.
     def enable(self):
         try:
             if self.s[-2] != "#" and self.s[-1] != "#":
@@ -98,14 +99,16 @@ class my_shell:
                     self.ssh.close()
                     self.package = "Unable to connect to: {}, enable password not valid\n".format(self.device["hostname"]), "wrong_file"
                     return True
+        #Si il y a une erreur on la mets dans le "package" et on ferme la connexion.
         except self.paramiko_exception as e:
             self.ssh.close()
             self.package = str(e) + ": " + self.device["hostname"] + "\n", "wrong_file"
             return True
+        #Si on est la c'est qu'on a reussi a se connecter mais on a pas encore lance de commandes donc pour l'instant on mets dans le package qu'il y a eu une erreur sur les commandes(ce sera modifie plus tard dans le code si on arrive a lancer les commandes).
         self.package = "Connected to {} but there was an error to process commands\n".format(self.device["hostname"]), "wrong_file"
         return False
 
-#Fonction pour separer la liste d'equipements en 8 sous liste (une pour chaque thread).
+#Fonction pour separer la liste d'equipements en "number_of_slices" sous liste (une pour chaque thread).
 def slice_my_list(devices, number_of_slices):
     my_list_of_list = []
     x = floor(len(devices) / number_of_slices)
@@ -116,10 +119,12 @@ def slice_my_list(devices, number_of_slices):
         my_list_of_list.append(devices[i*x:(i+1)*x])
     return my_list_of_list
 
+#Fonction pour ecrire dans le fichier (appelee par le thread ecrivain).
 def printfile(message, filename):
     with open(filename, "a") as file:
         file.write(message)
 
+#Fonction pour mettre au travail le thread ecrivain, il recupere son travail sur la queue.
 def run_printer(queue):
     while True:
         my_tuple = queue.get()
@@ -128,33 +133,37 @@ def run_printer(queue):
 
 # Fonction qui realise la connexion.
 def process(device, paramiko_exception, command):
+    #On instancie un objet "console" de type my_shell, le constructeur est appele (voir plus haut)
     console = my_shell(device, paramiko_exception)
+    #On se connecte avec notre objet et si il y a une erreur, on met le package sur la queue.
     if console.init():
         return console.get_package()
+    #On attends que le mot de passe soit traite
     if console.wait_password_processing():
         return console.get_package()
     while True:
+        #On recoit les infos du shell.
         console.get_info()
+        #On se connecte en mode enable.
         if console.enable():
             return console.get_package()
         #Si on arrive ici c'est qu'on est connecté en mode enable on peut donc l'écrire dans le bon fichier.
         print("Connected to {}".format(device["hostname"]))
+        #On envoit la commande "conf t".
         if console.send_command("conf t", 15):
             return console.get_package()
+        #On envoit les commandes.
         if console.send_command(command, 60):
             return console.get_package()
         print(console.s)
+        #Si on arrive ici c'est que tout a fonctionner et on peut donc mettre a jour le package pour le signifier.
         console.set_package("Connected to {} and commands sent successfully".format(device["hostname"]), "correct_file")
         print("commands sent")
+        #Le package est place sur la queue et sera traite par le thread ecrivain.
         return console.get_package()
         """channel.send(list_of_commands[nb] + "\n")
         time.sleep(4)
-        nb += 1
-#On "catche" les exceptions en cas d'erreur et on les écrits dans le fichier des erreurs.
-except paramiko_exception as e:
-    ssh.close()
-    return str(e) + ": " + device["hostname"] + "\n", "wrong_file"
-ssh.close()"""
+        nb += 1"""
 
 #Fonction pour produire et mettre sur la chaine (la queue) qui est appelee avec start()
 def run_worker(queue_in, queue_out, paramiko_exception, command):
@@ -177,9 +186,6 @@ devices = []
 
 #Un dictionnaire = un équipement.
 dico = {}
-
-#Info à recevoir du shell intractif.
-s = ""
 
 #Liste des ip qui correspond a la premiere partie de chaque ligne du fichier
 list_of_ip = []
@@ -222,7 +228,7 @@ list_of_threads = []
 nb_of_threads = 0
 
 number_of_slices = len(list_of_switches)
-#On decoupe la liste des equipements en n
+#On decoupe la liste des equipements en fonction du nombre de thread (chaque thread s'occupe d'une partie de la liste d'equipement). On lance au plus 16 threads sinon on lance autant de thread que d'equipements
 if number_of_slices >= 16:
     nb_of_threads = 16
     my_list_of_lists = slice_my_list(devices, nb_of_threads)
