@@ -204,9 +204,11 @@ with open("file", "r") as input_file:
 #On enleve la premiere ligne du fichier qui ne nous interesse pas
 #del(list_of_switches[0])
 
-#On recupere la premiere et la seconde partie de chaque ligne du fichier (les adresses ip)
+#On recupere la premiere et la seconde partie de chaque ligne du fichier (les adresses ip). Si c'est un firewall on ne l'ajoute pas aux listes.
 for i in list_of_switches:
     temp_list = i.split()
+    if "fw" in temp_list[1].lower():
+        continue
     list_of_ip.append(temp_list[0])
     list_of_name.append(temp_list[1])
 
