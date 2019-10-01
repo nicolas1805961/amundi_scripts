@@ -166,9 +166,6 @@ def process(device, paramiko_exception, commands):
     #print("commands sent")
     #Le package est place sur la queue et sera traite par le thread ecrivain.
     return console.get_package()
-    """channel.send(list_of_commands[nb] + "\n")
-    time.sleep(4)
-    nb += 1"""
 
 #Fonction pour produire et mettre sur la chaine (la queue) qui est appelee avec start()
 def run_worker(queue_in, queue_out, paramiko_exception, commands):
@@ -194,6 +191,7 @@ dico = {}
 
 #Liste des ip qui correspond a la premiere partie de chaque ligne du fichier
 list_of_ip = []
+#Liste des noms qui correspond a la deuxième partie de chaque ligne du fichier
 list_of_name = []
 
 #Initialisation du logging qui sera écrit dans le fichier "logging_info".
@@ -206,7 +204,7 @@ with open("file", "r") as input_file:
 #On enleve la premiere ligne du fichier qui ne nous interesse pas
 #del(list_of_switches[0])
 
-#On recupere la premiere partie de chaque ligne du fichier (les adresses ip)
+#On recupere la premiere et la seconde partie de chaque ligne du fichier (les adresses ip)
 for i in list_of_switches:
     temp_list = i.split()
     list_of_ip.append(temp_list[0])
@@ -216,9 +214,6 @@ for i in list_of_switches:
 with open("cmds", "r") as input_commands:
     list_of_commands = input_commands.readlines()
 list_of_commands = [x for x in list_of_commands if x != "\n"]
-
-#Variable initialisé à 0 et qui sera incrémentée à chaque commande traitée de manière à passser à l'équipement suivant lorsque nb = nombre de commandes.
-nb = 0
 
 #Stockage de l'adresse ip de chaque équipement dans un dictionnaire différent. Tous les dictionnaire sont stockés dans la liste de dico "devices".
 for switch in list_of_ip:
@@ -245,9 +240,7 @@ else:
     my_list_of_lists = slice_my_list(devices, nb_of_threads)
     list_of_list_of_name = slice_my_list(list_of_name, nb_of_threads)
 
-tuple_of_device_and_name = ()
-
-#On remplie chaque queue du dictionnaire
+#On remplie chaque queue du dictionnaire avec un tuple qui va contenir deux elements: l'equipement sous forme de dictionnaire et le nom de l'equipement. C'est la partie la plus complexe du code. On itère sur 2 liste simultanément avec zip.
 for i, slice_of_devices in enumerate(my_list_of_lists):
     dictionary_of_queues["queue_of_devices_" + str(i)] = queue.Queue()
     for device, name in zip(slice_of_devices, list_of_list_of_name[i]):
