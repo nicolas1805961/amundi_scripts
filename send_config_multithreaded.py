@@ -4,6 +4,7 @@ import time
 import socket
 import sys
 import threading
+import getpass
 from math import floor
 import queue
 from timeit import default_timer
@@ -12,8 +13,8 @@ from multiprocessing.dummy import Process
 #Cette "class" permet de créer un objet "my_shell "qui va permettre de réaliser la connexion et d'envoyer les commandes de manière simplifiee. On retourne True quand il y a une erreur et False quand c'est ok
 class my_shell:
     #Le constructeur qui initialise nos variables utilisee a travers le code
-    def __init__(self, device, paramiko_exception):
-        self.secret = "Dinai0!!"
+    def __init__(self, device, paramiko_exception, secret):
+        self.secret = secret
         self.ssh = paramiko.SSHClient()
         self.s = ""
         self.device = device
@@ -137,9 +138,10 @@ def run_printer(queue):
         queue.task_done()
 
 # Fonction qui realise la connexion.
-def process(device, paramiko_exception, commands):
+def process(device, paramiko_exception, commands, secret):
     #On instancie un objet "console" de type my_shell, le constructeur est appele (voir plus haut)
-    console = my_shell(device, paramiko_exception)
+    console = my_shell(device, paramiko_exception, secret)
+    sys.exit()
     #On se connecte avec notre objet et si il y a une erreur, on met le package sur la queue.
     if console.init():
         return console.get_package()
@@ -168,15 +170,16 @@ def process(device, paramiko_exception, commands):
     return console.get_package()
 
 #Fonction pour produire et mettre sur la chaine (la queue) qui est appelee avec start()
-def run_worker(queue_in, queue_out, paramiko_exception, commands):
+def run_worker(queue_in, queue_out, paramiko_exception, commands, secret):
     while True:
         job = queue_in.get()
-        my_tuple = process(job, paramiko_exception, commands)
+        my_tuple = process(job, paramiko_exception, commands, secret)
         queue_out.put(my_tuple)
         queue_in.task_done()
 
 #Mot de passe.
-password = "OmS&H1N1!"
+password = getpass.getpass(prompt="Enter password:")
+secret = getpass.getpass(prompt="Enter enable password:")
 
 #Exceptions à "catcher" en cas d'erreur.
 paramiko_exception = (paramiko.ssh_exception.NoValidConnectionsError,paramiko.ssh_exception.BadAuthenticationType,paramiko.ssh_exception.AuthenticationException,paramiko.ssh_exception.BadHostKeyException,paramiko.ssh_exception.ChannelException,paramiko.ssh_exception.PartialAuthentication,paramiko.ssh_exception.PasswordRequiredException,paramiko.ssh_exception.ProxyCommandFailure,paramiko.ssh_exception.SSHException,socket.timeout,
@@ -227,8 +230,6 @@ for switch in list_of_ip:
 #Le dictionnaire de queue qui va contenir n queue, une pour chaque thread
 dictionary_of_queues = {}
 
-list_of_threads = []
-
 nb_of_threads = 0
 
 number_of_slices = len(list_of_switches)
@@ -262,7 +263,7 @@ p.start()
 
 #On lance les threads producteur qui font les connexions, chaque thread travaille sur une partie de la liste des equipements.
 for i in range(nb_of_threads):
-    t = Process(target = run_worker, args = (dictionary_of_queues["queue_of_devices_" + str(i)], print_queue, paramiko_exception, list_of_commands))
+    t = Process(target = run_worker, args = (dictionary_of_queues["queue_of_devices_" + str(i)], print_queue, paramiko_exception, list_of_commands, secret))
     t.daemon = True
     t.start()
 
