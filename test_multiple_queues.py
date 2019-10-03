@@ -29,7 +29,7 @@ class my_shell:
     def init(self):
         try:
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            print("Connecting to: {}...".format(self.device[1]))
+            #print("Connecting to: {}...".format(self.device[1]))
             self.ssh.connect(**self.device[0], allow_agent = False, look_for_keys = False, timeout=10, auth_timeout=15, banner_timeout=15)
             self.channel = self.ssh.invoke_shell()
         except self.paramiko_exception as erreur:
@@ -100,7 +100,7 @@ class my_shell:
     def enable(self):
         try:
             if self.s[-2] != "#" and self.s[-1] != "#":
-                print("Entering enable mode...")
+                #print("Entering enable mode...")
                 if self.send_command("en", 15):
                     return True
                 #On verifie que la commande "en" a ete traitee, on gere les differents cas.
@@ -147,11 +147,11 @@ def run_printer(queue, number):
     sys.stdout.flush()
     sys.stdout.write("\b" * (number + 1))
     while True:
-        sys.stdout.write("#")
-        sys.stdout.flush()
         my_tuple = queue.get()
         printfile(*my_tuple)
         queue.task_done()
+        sys.stdout.write("#")
+        sys.stdout.flush()
 
 # Fonction qui realise la connexion.
 def process_stage_1(device, paramiko_exception, secret):
@@ -169,7 +169,7 @@ def process_stage_1(device, paramiko_exception, secret):
     if console.enable():
         return console
     #Si on arrive ici c'est qu'on est connecté en mode enable on peut donc l'écrire dans le bon fichier.
-    print("Connected to {}".format(device[1]))
+    #print("Connected to {}".format(device[1]))
     return console
 
 
@@ -180,7 +180,7 @@ def process_stage_2(commands, console):
     if console.send_command("conf t", 15):
         return console.get_package()
     #On envoit les commandes.
-    print("Sending commands")
+    #print("Sending commands")
     for i in commands:
         if console.send_command(i, 15):
             return console.get_package()
@@ -311,3 +311,5 @@ for i, j in zip(dictionary_of_queues_first_layer.keys(), dictionary_of_queues_se
     dictionary_of_queues_second_layer[j].join()
 
 print_queue.join()
+
+print("")

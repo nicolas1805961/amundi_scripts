@@ -136,11 +136,11 @@ def run_printer(queue, number):
     sys.stdout.flush()
     sys.stdout.write("\b" * (number + 1))
     while True:
-        sys.stdout.write("#")
-        sys.stdout.flush()
         my_tuple = queue.get()
         printfile(*my_tuple)
         queue.task_done()
+        sys.stdout.write("#")
+        sys.stdout.flush()
 
 # Fonction qui realise la connexion.
 def process(device, paramiko_exception, secret):
@@ -268,3 +268,4 @@ print_queue.join()
 for i in dictionary_of_queues.keys():
     dictionary_of_queues[i].join()
 
+print("")
