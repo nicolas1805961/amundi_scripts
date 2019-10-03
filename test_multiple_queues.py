@@ -1,5 +1,4 @@
 import paramiko
-import logging
 import time
 import socket
 import sys
@@ -137,21 +136,27 @@ def slice_my_list(devices, number_of_slices):
     return my_list_of_list
 
 #Fonction pour ecrire dans le fichier (appelee par le thread ecrivain).
-def printfile(message, filename):
-    with open(filename, "a") as file:
-        file.write(message)
+def printfile(console):
+    my_package = console.get_package()
+    with open(my_package[1], "a") as file:
+        file.write(my_package[0])
+    with open("logging_info", "a") as logfile:
+        logfile.write(console.s)
 
-#Fonction pour mettre au travail le thread ecrivain, il recupere son travail sur la queue.
+#Fonction pour mettre au travail le thread ecrivain, il recupere son travail sur la queue. On incrémente la barre de chargement d'une unité lorsque l'ecrivain a écrit un équipement dans un fichier.
 def run_printer(queue, number):
-    sys.stdout.write("[%s]" % (" " * number))
-    sys.stdout.flush()
+    print("[%s]" % (" " * number), end="", flush=True)
+    #sys.stdout.write("[%s]" % (" " * number))
+    #sys.stdout.flush()
     sys.stdout.write("\b" * (number + 1))
     while True:
-        my_tuple = queue.get()
-        printfile(*my_tuple)
+        console = queue.get()
+        printfile(console)
         queue.task_done()
-        sys.stdout.write("#")
-        sys.stdout.flush()
+        print("#", end="", flush=True)
+        #print("")
+        #sys.stdout.write("#")
+        #sys.stdout.flush()
 
 # Fonction qui realise la connexion.
 def process_stage_1(device, paramiko_exception, secret):
@@ -175,20 +180,20 @@ def process_stage_1(device, paramiko_exception, secret):
 
 def process_stage_2(commands, console):
     if console.get_flag_error():
-        return console.get_package()
+        return console
     #On envoit la commande "conf t".
     if console.send_command("conf t", 15):
-        return console.get_package()
+        return console
     #On envoit les commandes.
     #print("Sending commands")
     for i in commands:
         if console.send_command(i, 15):
-            return console.get_package()
+            return console
     #Si on arrive ici c'est que tout a fonctionner et on peut donc mettre a jour le package pour le signifier.
-    console.set_package("Connected to {} and commands sent successfully".format(console.device[1]), "correct_file")
+    console.set_package("Connected to {} and commands sent successfully\n".format(console.device[1]), "correct_file")
     #print("commands sent")
     #Le package est place sur la queue et sera traite par le thread ecrivain.
-    return console.get_package()
+    return console
 
 #Fonction pour produire et mettre sur la chaine (la queue) qui est appelee avec start()
 def run_worker_stage_1(queue_in, queue_out, paramiko_exception, secret):
@@ -229,9 +234,6 @@ dico = {}
 list_of_ip = []
 #Liste des noms qui correspond a la deuxième partie de chaque ligne du fichier
 list_of_name = []
-
-#Initialisation du logging qui sera écrit dans le fichier "logging_info".
-logging.basicConfig(filename = "logging_info", filemode = "w", format = "[%(levelname)s]: %(asctime)s %(message)s", level = logging.DEBUG)
 
 #Ouverture du fichier des équipements et stockage de chaque équipement dans une liste.
 with open(file, "r") as input_file:
@@ -290,7 +292,9 @@ print_queue = queue.Queue()
 #On tronque les deux fichiers pour qu'ils soient vide avant d'etre traites
 open("correct_file", "w").close()
 open("wrong_file", "w").close()
+open("logging_info", "w").close()
 
+logging_file = open("logging_info", "a")
 #On lance le thread ecrivain
 p = Process(target = run_printer, args = (print_queue, number_of_slices))
 p.daemon = True
@@ -312,4 +316,5 @@ for i, j in zip(dictionary_of_queues_first_layer.keys(), dictionary_of_queues_se
 
 print_queue.join()
 
+#On vide le buffer stdout pour que le prompt n'écrase pas la barre de chargement.
 print("")
