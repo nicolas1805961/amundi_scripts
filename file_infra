@@ -2,51 +2,7 @@
 <polUni>
     <infraInfra>
         <infraFuncP>
-            <infraAccPortGrp annotation="" descr="" name="Heroes_corporate_external" nameAlias="" ownerKey="" ownerTag="">
-                <infraRsStpIfPol annotation="" tnStpIfPolName="" />
-                <infraRsQosIngressDppIfPol annotation="" tnQosDppPolName="" />
-                <infraRsStormctrlIfPol annotation="" tnStormctrlIfPolName="" />
-                <infraRsQosEgressDppIfPol annotation="" tnQosDppPolName="" />
-                <infraRsMonIfInfraPol annotation="" tnMonInfraPolName="" />
-                <infraRsMcpIfPol annotation="" tnMcpIfPolName="default" />
-                <infraRsMacsecIfPol annotation="" tnMacsecIfPolName="" />
-                <infraRsQosSdIfPol annotation="" tnQosSdIfPolName="" />
-                <infraRsAttEntP annotation="" tDn="uni/infra/attentp-Heroes_corporate_external" />
-                <infraRsCdpIfPol annotation="" tnCdpIfPolName="default" />
-                <infraRsL2IfPol annotation="" tnL2IfPolName="" />
-                <infraRsQosDppIfPol annotation="" tnQosDppPolName="" />
-                <infraRsCoppIfPol annotation="" tnCoppIfPolName="" />
-                <infraRsDwdmIfPol annotation="" tnDwdmIfPolName="" />
-                <infraRsLldpIfPol annotation="" tnLldpIfPolName="default" />
-                <infraRsFcIfPol annotation="" tnFcIfPolName="" />
-                <infraRsQosPfcIfPol annotation="" tnQosPfcIfPolName="" />
-                <infraRsHIfPol annotation="" tnFabricHIfPolName="default" />
-                <infraRsL2PortSecurityPol annotation="" tnL2PortSecurityPolName="default" />
-                <infraRsL2PortAuthPol annotation="" tnL2PortAuthPolName="" />
-            </infraAccPortGrp>
-            <infraAccBndlGrp annotation="" descr="" lagT="node" name="ASA_CLI1_PROD_TN_VPC_IPG" nameAlias="" ownerKey="" ownerTag="">
-                <infraRsStpIfPol annotation="" tnStpIfPolName="None" />
-                <infraRsQosIngressDppIfPol annotation="" tnQosDppPolName="" />
-                <infraRsStormctrlIfPol annotation="" tnStormctrlIfPolName="None" />
-                <infraRsQosEgressDppIfPol annotation="" tnQosDppPolName="" />
-                <infraRsMonIfInfraPol annotation="" tnMonInfraPolName="" />
-                <infraRsMcpIfPol annotation="" tnMcpIfPolName="None" />
-                <infraRsMacsecIfPol annotation="" tnMacsecIfPolName="" />
-                <infraRsQosSdIfPol annotation="" tnQosSdIfPolName="" />
-                <infraRsAttEntP annotation="" tDn="uni/infra/attentp-T1T_PhysDom_AttEntityP" />
-                <infraRsCdpIfPol annotation="" tnCdpIfPolName="CDP_OFF" />
-                <infraRsL2IfPol annotation="" tnL2IfPolName="None" />
-                <infraRsQosDppIfPol annotation="" tnQosDppPolName="" />
-                <infraRsCoppIfPol annotation="" tnCoppIfPolName="" />
-                <infraRsQosPfcIfPol annotation="" tnQosPfcIfPolName="" />
-                <infraRsHIfPol annotation="" tnFabricHIfPolName="" />
-                <infraRsL2PortSecurityPol annotation="" tnL2PortSecurityPolName="" />
-                <infraRsL2PortAuthPol annotation="" tnL2PortAuthPolName="" />
-                <infraRsLacpPol annotation="" tnLacpLagPolName="None" />
-                <infraRsFcIfPol annotation="" tnFcIfPolName="" />
-                <infraRsLldpIfPol annotation="" tnLldpIfPolName="LLDP_OFF" />
-            </infraAccBndlGrp>
-            <infraAccBndlGrp annotation="" descr="" lagT="node" name="N7K_CLI1_PROD_TN_VPC_IPG" nameAlias="" ownerKey="" ownerTag="">
+            <infraAccBndlGrp annotation="" descr="" lagT="node" name="N7K_MAR1_PROD_TN_VPC_IPG" nameAlias="" ownerKey="" ownerTag="">
                 <infraRsStpIfPol annotation="" tnStpIfPolName="None" />
                 <infraRsQosIngressDppIfPol annotation="" tnQosDppPolName="" />
                 <infraRsStormctrlIfPol annotation="" tnStormctrlIfPolName="None" />
@@ -90,7 +46,7 @@
                 <infraRsFcIfPol annotation="" tnFcIfPolName="" />
                 <infraRsLldpIfPol annotation="" tnLldpIfPolName="LLDP_OFF" />
             </infraAccBndlGrp>
-            <infraAccBndlGrp annotation="" descr="" lagT="node" name="N7K_MAR1_PROD_TN_VPC_IPG" nameAlias="" ownerKey="" ownerTag="">
+            <infraAccBndlGrp annotation="" descr="" lagT="node" name="N7K_CLI1_PROD_TN_VPC_IPG" nameAlias="" ownerKey="" ownerTag="">
                 <infraRsStpIfPol annotation="" tnStpIfPolName="None" />
                 <infraRsQosIngressDppIfPol annotation="" tnQosDppPolName="" />
                 <infraRsStormctrlIfPol annotation="" tnStormctrlIfPolName="None" />
@@ -112,6 +68,85 @@
                 <infraRsFcIfPol annotation="" tnFcIfPolName="" />
                 <infraRsLldpIfPol annotation="" tnLldpIfPolName="LLDP_ON" />
             </infraAccBndlGrp>
+            <infraAccBndlGrp annotation="" descr="" lagT="node" name="ASA_CLI1_PROD_TN_VPC_IPG" nameAlias="" ownerKey="" ownerTag="">
+                <infraRsStpIfPol annotation="" tnStpIfPolName="None" />
+                <infraRsQosIngressDppIfPol annotation="" tnQosDppPolName="" />
+                <infraRsStormctrlIfPol annotation="" tnStormctrlIfPolName="None" />
+                <infraRsQosEgressDppIfPol annotation="" tnQosDppPolName="" />
+                <infraRsMonIfInfraPol annotation="" tnMonInfraPolName="" />
+                <infraRsMcpIfPol annotation="" tnMcpIfPolName="None" />
+                <infraRsMacsecIfPol annotation="" tnMacsecIfPolName="" />
+                <infraRsQosSdIfPol annotation="" tnQosSdIfPolName="" />
+                <infraRsAttEntP annotation="" tDn="uni/infra/attentp-T1T_PhysDom_AttEntityP" />
+                <infraRsCdpIfPol annotation="" tnCdpIfPolName="CDP_OFF" />
+                <infraRsL2IfPol annotation="" tnL2IfPolName="None" />
+                <infraRsQosDppIfPol annotation="" tnQosDppPolName="" />
+                <infraRsCoppIfPol annotation="" tnCoppIfPolName="" />
+                <infraRsQosPfcIfPol annotation="" tnQosPfcIfPolName="" />
+                <infraRsHIfPol annotation="" tnFabricHIfPolName="" />
+                <infraRsL2PortSecurityPol annotation="" tnL2PortSecurityPolName="" />
+                <infraRsL2PortAuthPol annotation="" tnL2PortAuthPolName="" />
+                <infraRsLacpPol annotation="" tnLacpLagPolName="None" />
+                <infraRsFcIfPol annotation="" tnFcIfPolName="" />
+                <infraRsLldpIfPol annotation="" tnLldpIfPolName="LLDP_OFF" />
+            </infraAccBndlGrp>
+            <infraAccPortGrp annotation="" descr="" name="Heroes_corporate_external" nameAlias="" ownerKey="" ownerTag="">
+                <infraRsStpIfPol annotation="" tnStpIfPolName="" />
+                <infraRsQosIngressDppIfPol annotation="" tnQosDppPolName="" />
+                <infraRsStormctrlIfPol annotation="" tnStormctrlIfPolName="" />
+                <infraRsQosEgressDppIfPol annotation="" tnQosDppPolName="" />
+                <infraRsMonIfInfraPol annotation="" tnMonInfraPolName="" />
+                <infraRsMcpIfPol annotation="" tnMcpIfPolName="default" />
+                <infraRsMacsecIfPol annotation="" tnMacsecIfPolName="" />
+                <infraRsQosSdIfPol annotation="" tnQosSdIfPolName="" />
+                <infraRsAttEntP annotation="" tDn="uni/infra/attentp-Heroes_corporate_external" />
+                <infraRsCdpIfPol annotation="" tnCdpIfPolName="default" />
+                <infraRsL2IfPol annotation="" tnL2IfPolName="" />
+                <infraRsQosDppIfPol annotation="" tnQosDppPolName="" />
+                <infraRsCoppIfPol annotation="" tnCoppIfPolName="" />
+                <infraRsDwdmIfPol annotation="" tnDwdmIfPolName="" />
+                <infraRsLldpIfPol annotation="" tnLldpIfPolName="default" />
+                <infraRsFcIfPol annotation="" tnFcIfPolName="" />
+                <infraRsQosPfcIfPol annotation="" tnQosPfcIfPolName="" />
+                <infraRsHIfPol annotation="" tnFabricHIfPolName="default" />
+                <infraRsL2PortSecurityPol annotation="" tnL2PortSecurityPolName="default" />
+                <infraRsL2PortAuthPol annotation="" tnL2PortAuthPolName="" />
+            </infraAccPortGrp>
         </infraFuncP>
+        <infraAccPortP name="LEF_101_102_PROD_TN_IPR">
+
+            <infraHPortS annotation="" descr="" name="INT_1_41_TO_1_44" nameAlias="" ownerKey="" ownerTag="" type="range">
+                <infraRsAccBaseGrp annotation="" tDn="uni/infra/funcprof/vPC-N7K_MAR1_PROD_TN_VPC_IPG" />
+                <infraPortBlk annotation="" descr="" fromCard="1" fromPort="41" name="INT_1_41_TO_1_44" nameAlias="" toCard="1" toPort="44" />
+            </infraHPortS>
+        </infraAccPortP>
+        <infraAccPortP name="LEF_201_202_PROD_TN_IPR">
+
+            <infraHPortS annotation="" descr="" name="INT_1_41_TO_1_44" nameAlias="" ownerKey="" ownerTag="" type="range">
+                <infraRsAccBaseGrp annotation="" tDn="uni/infra/funcprof/vPC-N7K_CLI1_PROD_TN_VPC_IPG" />
+                <infraPortBlk annotation="" descr="" fromCard="1" fromPort="41" name="INT_1_41_TO_1_44" nameAlias="" toCard="1" toPort="44" />
+            </infraHPortS>
+        </infraAccPortP>
+        <infraAccPortP name="LEF_101_102_PROD_TN_IPR">
+
+            <infraHPortS annotation="" descr="" name="INT_1_46" nameAlias="" ownerKey="" ownerTag="" type="range">
+                <infraRsAccBaseGrp annotation="" tDn="uni/infra/funcprof/vPC-ASA_MAR1_PROD_TN_VPC_IPG" />
+                <infraPortBlk annotation="" descr="" fromCard="1" fromPort="46" name="INT_1_46" nameAlias="" toCard="1" toPort="46" />
+            </infraHPortS>
+        </infraAccPortP>
+        <infraAccPortP name="LEF_201_202_PROD_TN_IPR">
+
+            <infraHPortS annotation="" descr="" name="INT_1_46" nameAlias="" ownerKey="" ownerTag="" type="range">
+                <infraRsAccBaseGrp annotation="" tDn="uni/infra/funcprof/vPC-ASA_CLI1_PROD_TN_VPC_IPG" />
+                <infraPortBlk annotation="" descr="" fromCard="1" fromPort="46" name="INT_1_46" nameAlias="" toCard="1" toPort="46" />
+            </infraHPortS>
+        </infraAccPortP>
+        <infraAccPortP name="LEF_101_PROD_TN_IPR">
+
+            <infraHPortS annotation="" descr="" name="INT_1_1" nameAlias="" ownerKey="" ownerTag="" type="range">
+                <infraRsAccBaseGrp annotation="" tDn="uni/infra/funcprof/Access-SRV" />
+                <infraPortBlk annotation="" descr="" fromCard="1" fromPort="1" name="INT_1_1" nameAlias="" toCard="1" toPort="1" />
+            </infraHPortS>
+        </infraAccPortP>
     </infraInfra>
 </polUni>

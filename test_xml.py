@@ -49,7 +49,7 @@ def main_work(ws, step, secondroot, tree, filename):
         for rows_index in range(1, ws.max_row):
             subtree = ET.parse(step[1])
             thirdroot = subtree.getroot()
-            secondroot.insert(0, thirdroot)
+            secondroot.append(thirdroot)
             replace_variable(thirdroot, rows_index)
             tree.write(filename, encoding="UTF-8", xml_declaration=True)
 
@@ -77,17 +77,17 @@ def handle_interface_group(secondroot, ws, tree, filename):
             if interface_type == "vPC":
                 subtree = ET.parse("/home/nico/scripts/infraAccBndlGrp_vpc.xml")
                 fourthroot = subtree.getroot()
-                thirdroot.insert(0, fourthroot)
+                thirdroot.append(fourthroot)
                 replace_variable(fourthroot, rows_index)
             elif interface_type == "Access":
                 subtree = ET.parse("/home/nico/scripts/infraAccBndlGrp_access.xml")
                 fourthroot = subtree.getroot()
-                thirdroot.insert(0, fourthroot)
+                thirdroot.append(fourthroot)
                 replace_variable(fourthroot, rows_index)
             elif interface_type == "pc":
                 subtree = ET.parse("/home/nico/scripts/infraAccBndlGrp_pc.xml")
                 fourthroot = subtree.getroot()
-                thirdroot.insert(0, fourthroot)
+                thirdroot.append(fourthroot)
                 replace_variable(fourthroot, rows_index)
             tree.write(filename, encoding="UTF-8", xml_declaration=True)
 
