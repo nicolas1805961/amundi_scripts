@@ -8,6 +8,7 @@ from openpyxl.utils.cell import coordinate_from_string, column_index_from_string
 wb = openpyxl.load_workbook("/home/nico/scripts/ACI_Implementation_Plan_Paris_draft_Copy.xlsx", data_only=True)
 ws = wb["Fabric Configuration Steps"]
 
+interface_profiles = []
 list_of_step = []
 list_of_step_tuple = []
 
@@ -42,9 +43,11 @@ def get_tuple(sheet, list_of_step):
                     list_of_step_tuple.append((step, xml_file, mode))
                     break
 
-def main_work(ws, step, secondroot, tree, filename):
+def main_work(ws, step, secondroot, tree, filename, interface_profiles):
     if ws.title == "interface_policy_group":
         handle_interface_group(secondroot, ws, tree, filename)
+    elif ws.title == "interface_selector":
+        handle_interface_selector(secondroot, ws, tree, filename, interface_profiles)
     else:
         for rows_index in range(1, ws.max_row):
             subtree = ET.parse(step[1])
@@ -68,6 +71,31 @@ def replace_variable(root, rows_index):
                 list_match = "".join(list_match)
                 j = j.replace(y, str(parse_excel(ws, rows_index, list_match)))
             t.attrib[i] = j
+
+def get_interface_profiles(ws, interface_profiles):
+    for col in ws.iter_cols(min_col=3, max_col=3, min_row=2, max_row=ws.max_row):
+        for cell in col:
+            interface_profiles.append(cell.value)
+    return interface_profiles
+
+def handle_interface_selector(secondroot, ws, tree, filename, interface_profiles):
+    interface_profiles = get_interface_profiles(ws, interface_profiles)
+    dealt_with = []
+    for t in interface_profiles:
+        if t in dealt_with:
+            continue
+        dealt_with.append(t)
+        tag = ET.Element("infraAccPortP")
+        secondroot.append(tag)
+        tag.set("name", t)
+        for index, i in enumerate(interface_profiles):
+            if i != t:
+                continue
+            subtree = ET.parse("infraHPortS.xml")
+            subtag = subtree.getroot()
+            tag.append(subtag)
+            replace_variable(tag, (index + 1))
+            tree.write(filename, encoding="UTF-8", xml_declaration=True)
 
 def handle_interface_group(secondroot, ws, tree, filename):
         thirdroot = ET.Element("infraFuncP")
@@ -109,9 +137,9 @@ for step in list_of_step_tuple:
         if sheet.title == step[0]:
             ws = wb[step[0]]
             if step[2] == "Fabric External Access Policy":
-                main_work(ws, step, second_root_infra, tree_infra, "file_infra")
+                main_work(ws, step, second_root_infra, tree_infra, "file_infra.xml", interface_profiles)
             elif step[2] == "Tenant Base Configuration":
-                main_work(ws, step, second_root_tenant, tree_tenant, "file_tenant")
+                main_work(ws, step, second_root_tenant, tree_tenant, "file_tenant.xml", interface_profiles)
             else:
-                main_work(ws, step, root_blank, tree_blank, "file_blank")
+                main_work(ws, step, root_blank, tree_blank, "file_blank.xml", interface_profiles)
             break
