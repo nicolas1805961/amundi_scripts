@@ -62,9 +62,10 @@ class my_shell:
                 return False
     #Methode pour recevoir les infos du shell
     def get_info(self):
+        time.sleep(0.1)
         while self.channel.recv_ready():
             self.s += self.channel.recv(4096).decode("UTF-8")
-            time.sleep(0.3)
+            time.sleep(0.1)
     #Methode pour verifier l'output de la commande "en", on traite chaque cas. Si on ne nous demande pas de mot de passe alors c'est qu'il y a eu un probleme
     def checking(self):
         t = default_timer()
@@ -182,7 +183,7 @@ def process(device, paramiko_exception, secret):
     if console.enable():
         return console
     #Si on arrive ici c'est que tout a fonctionner et on peut donc mettre a jour le package pour le signifier.
-    console.set_package("Connected to {}\n".format(console.device[1]), "correct_file")
+    console.set_package("{}\n".format(console.device[1]), "correct_file")
     #Si on arrive ici c'est qu'on est connecte en mode enable on peut donc l'ecrire dans le bon fichier.
     return console
 
@@ -217,7 +218,7 @@ devices = []
 #Un dictionnaire = un equipement.
 dico = {}
 #Liste contennant les substrings qui indiquent que l'impossibilite de se connecter a l'equipement est normale
-list_of_substring_name = ["fw", "rb", "ucs", "vip", "evergreen", "wifi", "etr", "cyc", "bos0", "ltm", "proxy", "prx", "f5", "hsrp", "ise", "gw-", "loop", "-vl", "hsm", "dct", "rto", "ap", "gtm", "sydney"]
+list_of_substring_name = ["fw", "rb", "ucs", "vip", "evergreen", "wifi", "etr", "cyc", "bos0", "ltm", "proxy", "prx", "f5", "hsrp", "ise", "gw-", "loop", "-vl", "hsm", "dct", "rto", "ap", "gtm", "sydney", "wa01"]
 
 list_of_sub_ip = ["10.250.", "10.198.237."]
 #Liste des ip qui correspond a la premiere partie de chaque ligne du fichier

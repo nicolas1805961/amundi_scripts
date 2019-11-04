@@ -62,10 +62,10 @@ class my_shell:
                 return False
     #Methode pour recevoir les infos du shell
     def get_info(self):
-        time.sleep(0.3)
+        time.sleep(0.2)
         while self.channel.recv_ready():
             self.s += self.channel.recv(4096).decode("UTF-8")
-            time.sleep(0.3)
+            time.sleep(0.2)
     #Methode pour verifier l'output de la commande "en", on traite chaque cas. Si on ne nous demande pas de mot de passe alors c'est qu'il y a eu un probleme
     def checking(self):
         t = default_timer()
@@ -217,16 +217,13 @@ def get_data(name):
     #Un dictionnaire = un equipement.
     dico = {}
     #On fait la resolution dns
-    while True:
-        process = subprocess.run(["nslookup", name], stdout = subprocess.PIPE, stderr = subprocess.PIPE, encoding="utf-8")
-        if process.returncode != 0:
-            print("There was an error : " + process.stderr)
-            continue
-        else:
-            lines = process.stdout.split("\n")
-            lines = [x for x in lines if x]
-            line = lines[-1].split()
-            break
+    process = subprocess.run(["nslookup", name], stdout = subprocess.PIPE, stderr = subprocess.PIPE, encoding="utf-8")
+    if process.returncode != 0:
+        return True
+    else:
+        lines = process.stdout.split("\n")
+        lines = [x for x in lines if x]
+        line = lines[-1].split()
 
     #Stockage de l'adresse ip de chaque equipement dans un dictionnaire different. Tous les dictionnaire sont stockes dans la liste de dico "devices".
     dico["hostname"] = line[1]
@@ -258,6 +255,8 @@ list_of_name = []
 with open(file, "r") as input_file:
     list_of_switches = input_file.readlines()
 
+open("dns_issue", "w").close()
+
 list_of_switches = [x.rstrip() for x in list_of_switches]
 
 #Ouverture du fichier des commandes et stockage dans une liste.
@@ -269,6 +268,10 @@ list_of_commands = [x for x in list_of_commands if x != "\n" and x != ""]
 for name in list_of_switches:
     bundle = []
     bundle.append(get_data(name))
+    if type(bundle[0]) is bool:
+        with open("dns_issue", "a") as file:
+            file.write("Command nslookup failed: " + name + "\n")
+        continue
     bundle[0]["password"] = password
     bundle[0]["username"] = "network"
     bundle.append(secret)
@@ -276,14 +279,7 @@ for name in list_of_switches:
     bundle.append(list_of_commands)
     devices.append(bundle.copy())
 
-
-'''#On recupere la premiere et la seconde partie de chaque ligne du fichier (les adresses ip). Si c'est un firewall on ne l'ajoute pas aux listes.
-for i in list_of_switches:
-    temp_list = i.split()
-    if "fw" in temp_list[1].lower() or "rb" in temp_list[1].lower():
-        continue
-    list_of_ip.append(temp_list[0])
-    list_of_name.append(temp_list[1])'''
+sys.exit()
 
 #Le dictionnaire de queue qui va contenir n queue, une pour chaque thread
 dictionary_of_queues_first_layer = {}
