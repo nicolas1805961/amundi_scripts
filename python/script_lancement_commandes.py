@@ -97,6 +97,18 @@ class my_shell:
             self.get_info()
             if self.s != a:
                 return False
+
+    def set_nexus(self):
+        try:
+            stdin, stdout, stderr = self.ssh.exec_command("sh version", timeout=25)
+        except self.paramiko_exception as erreur:
+            self.package = str(erreur) + ": " + self.device[0]["hostname"] + "\n", "wrong_file"
+            return True
+        lines = stdout.readlines()
+        if "NX-OS" in lines[0]:
+            del self.device[3]
+        return False
+
     #Methode pour entrer en mode enable. si l'output du shell ne se termine pas par "#" alors on est pas en mode enable.
     def enable(self, secret):
         try:
@@ -170,6 +182,7 @@ def put_min_queue(queue_device, device):
             min_queue = queue_device[t]
     min_queue.put(device)
 
+
 '''def create_device(console):
     device = {}
     my_device = console.get_device()
@@ -179,7 +192,7 @@ def put_min_queue(queue_device, device):
     return device, my_device[1]'''
 
 # Fonction qui realise la connexion.
-def process(device, paramiko_exception):
+def process(device, paramiko_exception, nexus_or_not, non_nexus_or_not):
     #On instancie un objet "console" de type my_shell, le constructeur est appele (voir plus haut)
     console = my_shell(device, paramiko_exception)
     #On se connecte avec notre objet et si il y a une erreur, on met le package sur la queue.
@@ -193,6 +206,11 @@ def process(device, paramiko_exception):
     #On se connecte en mode enable.
     if console.enable(device[1]):
         return console
+    if nexus_or_not == "y" and non_nexus_or_not == "y":
+        if console.set_nexus():
+            return console
+    print(console.get_device()[3])
+    sys.exit()
     #On envoit la commande "conf t".
     if console.send_command("conf t", 25):
         return console
@@ -206,10 +224,10 @@ def process(device, paramiko_exception):
     return console
 
 #Fonction pour produire et mettre sur la chaine (la queue) qui est appelee avec start()
-def run_worker_stage_1(queue_in, queue_out, paramiko_exception):
+def run_worker_stage_1(queue_in, queue_out, paramiko_exception, nexus_or_not, non_nexus_or_not):
     while True:
         job = queue_in.get()
-        shell = process(job, paramiko_exception)
+        shell = process(job, paramiko_exception, nexus_or_not, non_nexus_or_not)
         queue_out.put(shell)
         queue_in.task_done()
 
@@ -230,11 +248,30 @@ def get_data(name):
     return dico
 
 #Mot de passe.
+nexus_or_not = ""
+non_nexus_or_not = ""
 password = getpass.getpass(prompt="Enter password:")
 secret = getpass.getpass(prompt="Enter enable password:")
 #Nom des fichiers.
 file = input("Enter the name of the file with the devices:")
-cmds = input("Enter the name of the file with the commands:")
+
+while nexus_or_not != "y" and nexus_or_not != "n":
+    nexus_or_not = input("Is there any Nexus type device ? (y/n)")
+if nexus_or_not == "y":
+    cmds_nexus = input("Enter the name of the file with nexus commands:")
+    #Ouverture du fichier des commandes nexus et stockage dans une liste.
+    with open(cmds_nexus, "r") as input_commands:
+        list_of_nexus_commands = input_commands.readlines()
+    list_of_nexus_commands = [x for x in list_of_nexus_commands if x != "\n" and x != ""]
+
+while non_nexus_or_not != "y" and non_nexus_or_not != "n":
+    non_nexus_or_not = input("Is there any non-Nexus type device ? (y/n)")
+if non_nexus_or_not == "y":
+    cmds = input("Enter the name of the file with non-Nexus commands:")
+    #Ouverture du fichier des commandes et stockage dans une liste.
+    with open(cmds, "r") as input_commands:
+        list_of_commands = input_commands.readlines()
+    list_of_commands = [x for x in list_of_commands if x != "\n" and x != ""]
 
 #Exceptions a "catcher" en cas d'erreur.
 paramiko_exception = (paramiko.ssh_exception.NoValidConnectionsError,paramiko.ssh_exception.BadAuthenticationType,paramiko.ssh_exception.AuthenticationException,paramiko.ssh_exception.BadHostKeyException,paramiko.ssh_exception.ChannelException,paramiko.ssh_exception.PartialAuthentication,paramiko.ssh_exception.PasswordRequiredException,paramiko.ssh_exception.ProxyCommandFailure,paramiko.ssh_exception.SSHException,socket.timeout,
@@ -259,11 +296,6 @@ open("dns_issue", "w").close()
 
 list_of_switches = [x.rstrip() for x in list_of_switches]
 
-#Ouverture du fichier des commandes et stockage dans une liste.
-with open(cmds, "r") as input_commands:
-    list_of_commands = input_commands.readlines()
-list_of_commands = [x for x in list_of_commands if x != "\n" and x != ""]
-
 #On ajoute a notre liste de devices les bundles. On mets les infos utiles dans chaque bundle.
 for name in list_of_switches:
     bundle = []
@@ -276,10 +308,11 @@ for name in list_of_switches:
     bundle[0]["username"] = "network"
     bundle.append(secret)
     bundle.append(name)
-    bundle.append(list_of_commands)
+    if non_nexus_or_not == "y":
+        bundle.append(list_of_commands)
+    if nexus_or_not == "y":
+        bundle.append(list_of_nexus_commands)
     devices.append(bundle.copy())
-
-sys.exit()
 
 #Le dictionnaire de queue qui va contenir n queue, une pour chaque thread
 dictionary_of_queues_first_layer = {}
@@ -296,7 +329,7 @@ else:
     nb_of_threads = number_of_slices
     my_list_of_lists = slice_my_list(devices, nb_of_threads)
 
-#On remplie chaque queue du dictionnaire avec un tuple qui va contenir deux elements: l'equipement sous forme de dictionnaire et le nom de l'equipement. C'est la partie la plus complexe du code. On itere sur 2 liste simultanement avec zip.
+#On remplie chaque queue du dictionnaire avec un tuple qui va contenir deux elements: l'equipement sous forme de dictionnaire et le nom de l'equipement.
 for i, slice_of_devices in enumerate(my_list_of_lists):
     dictionary_of_queues_first_layer["queue_of_devices_" + str(i)] = queue.Queue()
     for device in slice_of_devices:
@@ -318,7 +351,7 @@ p.start()
 
 #On lance les threads producteur qui font les connexions, chaque thread travaille sur une partie de la liste des equipements.
 for i in range(nb_of_threads):
-    t = Process(target = run_worker_stage_1, args = (dictionary_of_queues_first_layer["queue_of_devices_" + str(i)], print_queue, paramiko_exception))
+    t = Process(target = run_worker_stage_1, args = (dictionary_of_queues_first_layer["queue_of_devices_" + str(i)], print_queue, paramiko_exception, nexus_or_not, non_nexus_or_not))
     t.daemon = True
     t.start()
 
