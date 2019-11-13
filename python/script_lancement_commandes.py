@@ -26,46 +26,52 @@ class my_shell:
     def __del__(self):
         self.channel.close()
         self.ssh.close()
+
     #Methode de l'objet permettant de realiser la connexion. Si on a une erreur, on renvoit True et on met a jour la valeur du package.
     def init(self):
         try:
             self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            #print("Connecting to: {}...".format(self.device[1]))
             self.ssh.connect(**self.device[0], allow_agent = False, look_for_keys = False, timeout=15, auth_timeout=15, banner_timeout=15)
             self.channel = self.ssh.invoke_shell()
         except self.paramiko_exception as erreur:
             self.package = str(erreur) + ": " + self.device[0]["hostname"] + "\n", "wrong_file"
             return True
         return False
+
     #"Getter" pour avoir acces au package en dehors de la classe
     def get_package(self):
         return self.package
+
     #"Getter" pour avoir acces au package en dehors de la classe
     def get_device(self):
         return self.device
+
     #"Getter" pour avoir acces au flag do over en dehors de la classe
     def get_do_over(self):
         return self.do_over
+
     #"Setter" pour mettre a jour la valeur du package en dehors de la classe
     def set_package(self, message, file):
         self.package = message, file
+
     #Methode pour attendre les infos du shell une fois que l'on a envoye le mot de passe.
     def wait_password_processing(self):
-        a = self.s
         t = default_timer()
         while True:
             if default_timer() - t >= 15:
                 self.package = "The device took too much time to process password: {}\n".format(self.device[0]["hostname"]), "wrong_file"
                 return True
             self.get_info()
-            if self.s != a:
+            if self.s.endswith("> ") or self.s.endswith(">") or self.s.endswith("$") or self.s.endswith("$ ") or self.s.endswith("#") or self.s.endswith("# "):
                 return False
+
     #Methode pour recevoir les infos du shell
     def get_info(self):
-        time.sleep(0.2)
+        time.sleep(0.1)
         while self.channel.recv_ready():
-            self.s += self.channel.recv(4096).decode("UTF-8")
-            time.sleep(0.2)
+            self.s += self.channel.recv(9999).decode("UTF-8")
+            time.sleep(0.1)
+
     #Methode pour verifier l'output de la commande "en", on traite chaque cas. Si on ne nous demande pas de mot de passe alors c'est qu'il y a eu un probleme
     def checking(self):
         t = default_timer()
@@ -79,10 +85,10 @@ class my_shell:
             elif default_timer() - t >= 15:
                 self.package = "Took too much time to process \"en\" command: {} \n".format(self.device[0]["hostname"]), "wrong_file"
                 return True
+
     #Methode pour envoyer une commande au shell.Si le temps d'execution est superieur a "seconde" alors c'est trop long et on renvoit une erreur
     def send_command(self, cmd, seconds):
         t = default_timer()
-        a = self.s
         try:
             self.channel.send(cmd + "\n")
         except self.paramiko_exception as error:
@@ -95,26 +101,59 @@ class my_shell:
                 self.do_over = True
                 return True
             self.get_info()
-            if self.s != a:
+            if self.s.endswith("#") or self.s.endswith("# "):
                 return False
 
+    #Methode pour verifier le type d'equipement et choisir le bon lot de commandes. Si la premiere ou la deuxieme ligne de l'output de la commande "sh version" contient "NX-OS" alors c'est un equipement nexus. Dans ce cas on supprime la liste de commande non-nexus. On envoit egalement 100 characteres "espace" pour lire l'output de la commande "sh version" car cet output peut être sur plusieurs pages. On arrete de recevoir l'output du shell a partir du moment ou l'on a au moins cinq lignes.
     def set_nexus(self):
+        t = default_timer()
+        a = ""
         try:
-            stdin, stdout, stderr = self.ssh.exec_command("sh version", timeout=25)
-        except self.paramiko_exception as erreur:
-            self.package = str(erreur) + ": " + self.device[0]["hostname"] + "\n", "wrong_file"
+            self.channel.send("sh version\n")
+            self.channel.send(" " * 100 + "\n")
+        except self.paramiko_exception as error:
+            self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", "wrong_file"
+            self.do_over = True
             return True
-        lines = stdout.readlines()
-        if "NX-OS" in lines[0]:
-            del self.device[3]
-        return False
+        while True:
+            if default_timer() - t >= 25:
+                self.package = "The device took too much time to process command: \"sh version\": {}\n".format(self.device[0]["hostname"]), "wrong_file"
+                return True
+            while self.channel.recv_ready():
+                a += self.channel.recv(9999).decode("UTF-8")
+                time.sleep(0.1)
+            if a != "" and a.count("\n") > 5:
+                lines = a.split("\n")
+                if len(lines) < 3:
+                    self.package = "Length of lines < 3: {}\n".format(self.device[2]), "wrong_file"
+                    return True
+                if "NX-OS" in lines[1] or "NX-OS" in lines[2]:
+                    del self.device[3]
+                return False
+
+    #Methode pour entrer en mode "enable". On recoit l'output du shell tant que celui-ci ne se termine pas par "#" ou "# " ou "password:" ou "password: " ou "Password:" ou "Password: ".
+    def send_enable(self):
+        t = default_timer()
+        try:
+            self.channel.send("en\n")
+        except self.paramiko_exception as error:
+            self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", "wrong_file"
+            self.do_over = True
+            return True
+        while True:
+            if default_timer() - t >= 25:
+                self.package = "The device took too much time to process command: \"en\", {}\n".format(self.device[0]["hostname"]), "wrong_file"
+                self.do_over = True
+                return True
+            self.get_info()
+            if self.s.endswith("Password: ") or self.s.endswith("password: ") or self.s.endswith("password:") or self.s.endswith("Password:") or self.s.endswith("#") or self.s.endswith("# "):
+                return False
 
     #Methode pour entrer en mode enable. si l'output du shell ne se termine pas par "#" alors on est pas en mode enable.
     def enable(self, secret):
         try:
             if self.s[-2] != "#" and self.s[-1] != "#":
-                #print("Entering enable mode...")
-                if self.send_command("en", 25):
+                if self.send_enable():
                     return True
                 #On verifie que la commande "en" a ete traitee, on gere les differents cas.
                 if self.checking():
@@ -156,10 +195,14 @@ def printfile(console):
 
 #Fonction pour mettre au travail le thread ecrivain, il recupere son travail sur la queue. On incremente la barre de chargement d'une unite lorsque l'ecrivain a ecrit un equipement dans un fichier.
 def run_printer(queue, number, queue_device):
-    print("[%s]" % (" " * number), end="", flush=True)
-    sys.stdout.write("\b" * (number + 1))
+    count = number
+    errors = 0
+    print("equipment remaining: {} errors: {}".format(count, errors), end = "", flush = True)
     while True:
         console = queue.get()
+        my_package = console.get_package()
+        if my_package[1] == "wrong_file":
+            errors += 1
         if console.get_do_over():
             device = console.get_device()
             put_min_queue(queue_device, device)
@@ -168,8 +211,10 @@ def run_printer(queue, number, queue_device):
             continue
         printfile(console)
         queue.task_done()
+        count -= 1
         del console
-        print("#", end="", flush=True)
+        print("\b ", end = "\r", flush = True)
+        print("equipment remaining: {} errors: {}".format(count, errors), end = "", flush = True)
 
 #En cas d'erreur, on remets le bundle sur la queue la moins remplie
 def put_min_queue(queue_device, device):
@@ -181,15 +226,6 @@ def put_min_queue(queue_device, device):
             min = n
             min_queue = queue_device[t]
     min_queue.put(device)
-
-
-'''def create_device(console):
-    device = {}
-    my_device = console.get_device()
-    device["hostname"] = my_device[0]["hostname"]
-    device["username"] = "network"
-    device["password"] = my_device[0]["password"]
-    return device, my_device[1]'''
 
 # Fonction qui realise la connexion.
 def process(device, paramiko_exception, nexus_or_not, non_nexus_or_not):
@@ -209,8 +245,6 @@ def process(device, paramiko_exception, nexus_or_not, non_nexus_or_not):
     if nexus_or_not == "y" and non_nexus_or_not == "y":
         if console.set_nexus():
             return console
-    print(console.get_device()[3])
-    sys.exit()
     #On envoit la commande "conf t".
     if console.send_command("conf t", 25):
         return console
@@ -256,7 +290,7 @@ secret = getpass.getpass(prompt="Enter enable password:")
 file = input("Enter the name of the file with the devices:")
 
 while nexus_or_not != "y" and nexus_or_not != "n":
-    nexus_or_not = input("Is there any Nexus type device ? (y/n)")
+    nexus_or_not = input("Is there any Nexus type device (y/n)? If you don't know write \"y\"")
 if nexus_or_not == "y":
     cmds_nexus = input("Enter the name of the file with nexus commands:")
     #Ouverture du fichier des commandes nexus et stockage dans une liste.
@@ -265,7 +299,7 @@ if nexus_or_not == "y":
     list_of_nexus_commands = [x for x in list_of_nexus_commands if x != "\n" and x != ""]
 
 while non_nexus_or_not != "y" and non_nexus_or_not != "n":
-    non_nexus_or_not = input("Is there any non-Nexus type device ? (y/n)")
+    non_nexus_or_not = input("Is there any non-Nexus type device (y/n)? If you don't know write \"y\"")
 if non_nexus_or_not == "y":
     cmds = input("Enter the name of the file with non-Nexus commands:")
     #Ouverture du fichier des commandes et stockage dans une liste.
@@ -362,4 +396,4 @@ for i in dictionary_of_queues_first_layer.keys():
 print_queue.join()
 
 #On vide le buffer stdout pour que le prompt n'ecrase pas la barre de chargement.
-print("")
+print("\n")
