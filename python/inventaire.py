@@ -9,6 +9,7 @@ from math import floor
 import queue
 from timeit import default_timer
 from multiprocessing.dummy import Process
+import re
 
 #Cette "class" permet de creer un objet "my_shell "qui va permettre de realiser la connexion et d'envoyer les commandes de maniere simplifiee. On retourne True quand il y a une erreur et False quand c'est ok
 class my_shell:
@@ -19,6 +20,7 @@ class my_shell:
         self.device = device
         self.channel = paramiko.Channel(1)
         self.package = ()
+        self.lines = []
         self.paramiko_exception = paramiko_exception
         self.do_over = False
 
@@ -41,6 +43,10 @@ class my_shell:
     #"Getter" pour avoir acces au package en dehors de la classe
     def get_package(self):
         return self.package
+
+    #"Getter" pour avoir acces aux lignes en dehors de la classe
+    def get_lines(self):
+        return self.lines
 
     #"Getter" pour avoir acces au package en dehors de la classe
     def get_device(self):
@@ -130,11 +136,13 @@ class my_shell:
                 if "NX-OS" in lines[1] or "NX-OS" in lines[2]:
                     del self.device[3]
                 return False
-
+                
+    #Methode pour recuperer le nom des voisins avec la commande "show cdp neighbors". Lines contient les noms des equipements dans une liste.
     def sh_neighbours(self):
         t = default_timer()
         a = ""
         try:
+            #On envoit la commande suivie de plusieurs espace pour faire defiler les pages.
             self.channel.send("show cdp neighbors\n")
             self.channel.send(" " * 100 + "\n")
         except self.paramiko_exception as error:
@@ -153,8 +161,11 @@ class my_shell:
                 if len(lines) < 3:
                     self.package = "Length of lines < 3: {}\n".format(self.device[2]), "wrong_file"
                     return True
-                lines = [x.split(' ', 1)[0] for x in lines if ".fr" in x or ("Gig" in x and not x.startswith(' ')) or ("Ten" in x and not x.startswith(' '))]
+                #On recupere le premier mot de chaque ligne si cette ligne contient ".fr" ou commence par un espace et contient "Gig" ou commence par un espace et contient "Ten". Pour recuperer les premiers mots de chaque ligne on découpe la ligne au premier espace ou premier retour a la ligne grace a "\s".
+                lines = [re.split('\s+', x)[0] for x in lines if ".fr" in x or ("Gig" in x and not x.startswith(' ')) or ("Ten" in x and not x.startswith(' '))]
+                #On elimine les doublons.
                 lines = list(dict.fromkeys(lines))
+                self.lines = lines
                 text = "\n".join(lines)
                 self.package = text, self.device[3]
                 return False
@@ -216,7 +227,11 @@ def slice_my_list(devices, number_of_slices):
 def printfile(console):
     my_package = console.get_package()
     with open(my_package[1], "a") as file:
-        file.write(my_package[0])
+        if my_package[1] == "inventaire_agoram":
+            for line in console.get_lines():
+                file.write(line + '\n')
+        elif my_package[1] == "wrong_file":
+            file.write(my_package[0])
     with open("logging_info", "a") as logfile:
         logfile.write("*" * 500 + "\n")
         logfile.write(console.s)
