@@ -24,7 +24,6 @@ class my_shell:
         self.channel = paramiko.Channel(1)
         self.package = ()
         self.paramiko_exception = paramiko_exception
-        self.do_over = False
         self.list_of_context = []
 
     #Le destructeur appele lorsque l'objet meurt, on ferme la connexion lorsqu'il disparait
@@ -50,10 +49,6 @@ class my_shell:
     #"Getter" pour avoir acces au package en dehors de la classe
     def get_device(self):
         return self.device
-
-    #"Getter" pour avoir acces au flag do over en dehors de la classe
-    def get_do_over(self):
-        return self.do_over
 
     #"Setter" pour mettre a jour la valeur du package en dehors de la classe
     def set_package(self, message, file):
@@ -98,7 +93,6 @@ class my_shell:
             self.channel.send(cmd + "\n")
         except self.paramiko_exception as error:
             self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", "wrong_file"
-            self.do_over = True
             return True
         while True:
             if default_timer() - t >= seconds:
@@ -108,33 +102,6 @@ class my_shell:
             if self.s.endswith("#") or self.s.endswith("# "):
                 return False
 
-    #Methode pour verifier le type d'equipement et choisir le bon lot de commandes. Si la premiere ou la deuxieme ligne de l'output de la commande "sh version" contient "NX-OS" alors c'est un equipement nexus. Dans ce cas on supprime la liste de commande non-nexus. On envoit egalement 100 characteres "espace" pour lire l'output de la commande "sh version" car cet output peut être sur plusieurs pages. On arrete de recevoir l'output du shell a partir du moment ou l'on a au moins cinq lignes.
-    def set_nexus(self):
-        t = default_timer()
-        a = ""
-        try:
-            self.channel.send("sh version\n")
-            self.channel.send(" " * 100 + "\n")
-        except self.paramiko_exception as error:
-            self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", "wrong_file"
-            self.do_over = True
-            return True
-        while True:
-            if default_timer() - t >= 25:
-                self.package = "The device took too much time to process command: \"sh version\": {}\n".format(self.device[0]["hostname"]), "wrong_file"
-                return True
-            while self.channel.recv_ready():
-                a += self.channel.recv(9999).decode("UTF-8")
-                time.sleep(0.1)
-            if a != "" and a.count("\n") > 5:
-                lines = a.split("\n")
-                if len(lines) < 3:
-                    self.package = "Length of lines < 3: {}\n".format(self.device[2]), "wrong_file"
-                    return True
-                if "NX-OS" in lines[1] or "NX-OS" in lines[2]:
-                    del self.device[3]
-                return False
-
     def show_context(self):
         t = default_timer()
         a = ""
@@ -142,11 +109,10 @@ class my_shell:
             self.channel.send("show context\n")
         except self.paramiko_exception as error:
             self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", "wrong_file"
-            self.do_over = True
             return True
         while True:
-            if default_timer() - t >= 25:
-                self.package = "The device took too much time to process command: \"sh version\": {}\n".format(self.device[0]["hostname"]), "wrong_file"
+            if default_timer() - t >= 60:
+                self.package = "The device took too much time to process command: \"show context\": {}\n".format(self.device[0]["hostname"]), "wrong_file"
                 return True
             while self.channel.recv_ready():
                 a += self.channel.recv(9999).decode("UTF-8")
@@ -159,21 +125,22 @@ class my_shell:
                 self.list_of_context = [re.split('\s+', x)[1] for x in lines if ("default" in x and x.startswith(' '))]
                 return False
 
-    def send_netcfg(self):
+    def send_netcfg(self, context = "admin"):
         t = default_timer()
         try:
             self.channel.send("netcfg\n")
             self.get_info()
             while (not self.s.endswith("#") and not self.s.endswith("# ") and not self.s.endswith(">") and not self.s.endswith("> ")):
-                if default_timer() - t >= 60:
-                    self.package = "The device took too much time to process command: \"netcfg\": {}\n".format(self.device[0]["hostname"]), "wrong_file"
+                if default_timer() - t >= 3600:
+                    self.package = "The context {} on firewall {} took too much time to process command: \"netcfg\"\n".format(context, self.device[2]), "wrong_file"
                     return True
                 self.channel.send("\n")
+                while not self.channel.recv_ready():
+                    continue
                 self.get_info()
             return False
         except self.paramiko_exception as error:
-            self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", "wrong_file"
-            self.do_over = True
+            self.package = str(error) + " Context: {}, Firewall: {}".format(context, self.device[2]), "wrong_file"
             return True
 
     #Methode pour entrer en mode "enable". On recoit l'output du shell tant que celui-ci ne se termine pas par "#" ou "# " ou "password:" ou "password: " ou "Password:" ou "Password: ".
@@ -183,12 +150,10 @@ class my_shell:
             self.channel.send("en\n")
         except self.paramiko_exception as error:
             self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", "wrong_file"
-            self.do_over = True
             return True
         while True:
-            if default_timer() - t >= 25:
+            if default_timer() - t >= 60:
                 self.package = "The device took too much time to process command: \"en\", {}\n".format(self.device[0]["hostname"]), "wrong_file"
-                self.do_over = True
                 return True
             self.get_info()
             if self.s.endswith("Password: ") or self.s.endswith("password: ") or self.s.endswith("password:") or self.s.endswith("Password:") or self.s.endswith("#") or self.s.endswith("# "):
@@ -204,7 +169,7 @@ class my_shell:
                 if self.checking():
                     return True
                 #Une fois que la commande "en" a ete traitee, on envoit le mot de passe enable.
-                if self.send_command(str(secret), 25):
+                if self.send_command(str(secret), 60):
                     return True
                 #Si apres avoir entre la mot de passe notre prompt ne se termine pas par "#" alors il y a eu un probleme.
                 if self.s[-2] != "#" and self.s[-1] != "#":
@@ -248,29 +213,12 @@ def run_printer(queue, number, queue_device):
         my_package = console.get_package()
         if my_package[1] == "wrong_file":
             errors += 1
-        if console.get_do_over():
-            device = console.get_device()
-            put_min_queue(queue_device, device)
-            queue.task_done()
-            del console
-            continue
         printfile(console)
         queue.task_done()
         count -= 1
         del console
         print("\b ", end = "\r", flush = True)
         print("equipment remaining: {} errors: {}".format(count, errors), end = "", flush = True)
-
-#En cas d'erreur, on remets le bundle sur la queue la moins remplie
-def put_min_queue(queue_device, device):
-    min = 1000
-    min_queue = queue.Queue()
-    for t in queue_device:
-        n = queue_device[t].qsize()
-        if n < min:
-            min = n
-            min_queue = queue_device[t]
-    min_queue.put(device)
 
 # Fonction qui realise la connexion.
 def process(device, paramiko_exception):
@@ -298,7 +246,7 @@ def process(device, paramiko_exception):
     for i in console.list_of_context:
         if console.send_command("changeto context " + i, 60):
             return console
-        if console.send_netcfg():
+        if console.send_netcfg(i):
             return console
     #Si on arrive ici c'est que tout a fonctionner et on peut donc mettre a jour le package pour le signifier.
     console.set_package("Connected to {} and commands sent successfully\n".format(console.device[0]["hostname"]), "correct_file")
@@ -424,15 +372,18 @@ for i in dictionary_of_queues_first_layer.keys():
 
 print_queue.join()
 
-print("\n\n")
-
+pwd = os.getcwd()
 os.chdir("/appcacti/tftpboot/Netcfg/")
 directory_name = "/appcacti/tftpboot/save_conf_" + time.strftime("%m_%Y")
 if not os.path.exists(directory_name):
     os.makedirs(directory_name)
 for file in glob.glob("*.cfg"):
     shutil.move(file, directory_name + "/" + file)
-with open("/home/bastion/wrong_file", "a") as wrong_file, open("/home/bastion/correct_file", "a") as correct_file:
+
+print("\n", flush=True)
+sys.exit(0)
+
+with open(pwd + "/wrong_file", "a") as wrong_file, open(pwd + "/correct_file", "a") as correct_file:
     for filename in glob.glob(directory_name + "/*.cfg"):
         with open(filename, "r") as file:
             lines = file.readlines()
