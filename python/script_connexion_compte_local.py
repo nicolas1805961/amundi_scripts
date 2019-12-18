@@ -1,3 +1,5 @@
+#Nom des equipements pour lesquels la connexion a fonctionne dans "correct_file", les autres dans "wrong_file"
+
 import paramiko
 import time
 import socket
@@ -198,6 +200,8 @@ def run_worker_stage_1(queue_in, queue_out, paramiko_exception, secret):
 #Mot de passe.
 password = getpass.getpass(prompt="Enter password:")
 secret = getpass.getpass(prompt="Enter enable password:")
+#Nom des fichiers.
+file = input("Enter the name of the file with the devices (full path if not in current directory):")
 
 #Exceptions a "catcher" en cas d'erreur.
 paramiko_exception = (paramiko.ssh_exception.NoValidConnectionsError,paramiko.ssh_exception.BadAuthenticationType,paramiko.ssh_exception.AuthenticationException,paramiko.ssh_exception.BadHostKeyException,paramiko.ssh_exception.ChannelException,paramiko.ssh_exception.PartialAuthentication,paramiko.ssh_exception.PasswordRequiredException,paramiko.ssh_exception.ProxyCommandFailure,
@@ -233,7 +237,7 @@ def dont_care(list_of_substring, equipment_name):
     return False
 
 #Ouverture du fichier des equipements et stockage de chaque equipement dans une liste.
-with open("host.txt", "r") as input_file:
+with open(file, "r") as input_file:
     list_of_switches = input_file.readlines()
 
 #On enleve la premiere ligne du fichier qui ne nous interesse pas

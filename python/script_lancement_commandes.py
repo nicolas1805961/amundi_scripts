@@ -1,3 +1,5 @@
+#Les erreurs sont dans le fichier "wrong_file" et les logs dans "logging_info"
+
 import paramiko
 import subprocess
 import time
@@ -287,12 +289,12 @@ non_nexus_or_not = ""
 password = getpass.getpass(prompt="Enter password:")
 secret = getpass.getpass(prompt="Enter enable password:")
 #Nom des fichiers.
-file = input("Enter the name of the file with the devices:")
+file = input("Enter the name of the file with the devices (full path if not in current directory):")
 
 while nexus_or_not != "y" and nexus_or_not != "n":
     nexus_or_not = input("Is there any Nexus type device (y/n)? If you don't know write \"y\"")
 if nexus_or_not == "y":
-    cmds_nexus = input("Enter the name of the file with nexus commands:")
+    cmds_nexus = input("Enter the name of the file with nexus commands (full path if not in current directory):")
     #Ouverture du fichier des commandes nexus et stockage dans une liste.
     with open(cmds_nexus, "r") as input_commands:
         list_of_nexus_commands = input_commands.readlines()
@@ -301,7 +303,7 @@ if nexus_or_not == "y":
 while non_nexus_or_not != "y" and non_nexus_or_not != "n":
     non_nexus_or_not = input("Is there any non-Nexus type device (y/n)? If you don't know write \"y\"")
 if non_nexus_or_not == "y":
-    cmds = input("Enter the name of the file with non-Nexus commands:")
+    cmds = input("Enter the name of the file with non-Nexus commands (full path if not in current directory):")
     #Ouverture du fichier des commandes et stockage dans une liste.
     with open(cmds, "r") as input_commands:
         list_of_commands = input_commands.readlines()
@@ -377,7 +379,6 @@ open("correct_file", "w").close()
 open("wrong_file", "w").close()
 open("logging_info", "w").close()
 
-logging_file = open("logging_info", "a")
 #On lance le thread ecrivain
 p = Process(target = run_printer, args = (print_queue, number_of_slices, dictionary_of_queues_first_layer))
 p.daemon = True

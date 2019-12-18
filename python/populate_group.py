@@ -51,17 +51,17 @@ class my_shell:
         self.package = message, file
     #Methode pour attendre les infos du shell une fois que l'on a envoye le mot de passe.
     def wait_password_processing(self):
-        a = self.s
         t = default_timer()
         while True:
             if default_timer() - t >= 15:
                 self.package = "The device took too much time to process password: {}\n".format(self.device[0]["hostname"]), "wrong_file"
                 return True
             self.get_info()
-            if self.s != a:
+            if self.s.endswith("> ") or self.s.endswith(">") or self.s.endswith("$") or self.s.endswith("$ ") or self.s.endswith("#") or self.s.endswith("# "):
                 return False
     #Methode pour recevoir les infos du shell
     def get_info(self):
+        time.sleep(0.1)
         while self.channel.recv_ready():
             self.s += self.channel.recv(4096).decode("UTF-8")
             time.sleep(0.3)
