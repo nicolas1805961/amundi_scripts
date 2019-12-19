@@ -64,42 +64,56 @@ class my_shell:
     def wait_password_processing(self):
         t = default_timer()
         while True:
-            if default_timer() - t >= 60:
-                self.package = "The device took too much time to process password: {}\n".format(self.device[0]["hostname"]), self.log_file_name
+            try:
+                if default_timer() - t >= 60:
+                    self.package = "The device took too much time to process password: {}\n".format(self.device[0]["hostname"]), self.log_file_name
+                    self.error = True
+                    return True
+                self.get_info()
+                if self.s.endswith("> ") or self.s.endswith(">") or self.s.endswith("$") or self.s.endswith("$ ") or self.s.endswith("#") or self.s.endswith("# "):
+                    return False
+            except self.paramiko_exception as erreur:
+                self.package = str(erreur) + ", error while waiting for password processing: {}\n".format(self.device[2]), self.log_file_name
                 self.error = True
                 return True
-            self.get_info()
-            if self.s.endswith("> ") or self.s.endswith(">") or self.s.endswith("$") or self.s.endswith("$ ") or self.s.endswith("#") or self.s.endswith("# "):
-                return False
 
+    #Methode pour verifier le prompt du firewall de sorte qu'on ne tombe pas dans un contexte autre que "admin" ou qu'il ne s'agisse pas d'un firewall non-actif.
     def check_admin(self, liste_prompt):
-        for end in liste_prompt:
-            if self.s.endswith(end):
-                return False
-        self.package = "Erreur: connexion directe dans un contexte autre que \"admin\" ou \"active\" ou \"act\": {}\n".format(self.device[2]), self.log_file_name
-        self.error = True
-        return True
+        lines = self.s.split("\n")
+        if "/" in lines[-1]:
+            for end in liste_prompt:
+                if self.s.endswith(end):
+                    return False
+            self.package = "Erreur: firewall de \"standby\" ou connexion directe dans un contexte autre que \"admin\": {}\n".format(self.device[2]), self.log_file_name
+            self.error = True
+            return True
+        return False
 
     #Methode pour recevoir les infos du shell
     def get_info(self):
-        time.sleep(0.1)
-        while self.channel.recv_ready():
-            self.s += self.channel.recv(9999).decode("UTF-8")
             time.sleep(0.1)
+            while self.channel.recv_ready():
+                self.s += self.channel.recv(9999).decode("UTF-8")
+                time.sleep(0.1)
 
     #Methode pour verifier l'output de la commande "en", on traite chaque cas. Si on ne nous demande pas de mot de passe alors c'est qu'il y a eu un probleme
     def checking(self):
         t = default_timer()
         while True:
-            self.get_info()
-            if self.s.endswith("Password: ") or self.s.endswith("password: ") or self.s.endswith("password:") or self.s.endswith("Password:") or self.s.endswith("#") or self.s.endswith("# "):
-                return False
-            elif self.s.endswith("> ") or self.s.endswith(">") or self.s.endswith("$") or self.s.endswith("$ "):
-                self.package = "Can't enter enable mode, probably different OS: {} \n".format(self.device[0]["hostname"]), self.log_file_name
-                self.error = True
-                return True
-            elif default_timer() - t >= 60:
-                self.package = "Took too much time to process \"en\" command: {} \n".format(self.device[0]["hostname"]), self.log_file_name
+            try:
+                self.get_info()
+                if self.s.endswith("Password: ") or self.s.endswith("password: ") or self.s.endswith("password:") or self.s.endswith("Password:") or self.s.endswith("#") or self.s.endswith("# "):
+                    return False
+                elif self.s.endswith("> ") or self.s.endswith(">") or self.s.endswith("$") or self.s.endswith("$ "):
+                    self.package = "Can't enter enable mode, probably different OS: {} \n".format(self.device[0]["hostname"]), self.log_file_name
+                    self.error = True
+                    return True
+                elif default_timer() - t >= 60:
+                    self.package = "Took too much time to process \"en\" command: {} \n".format(self.device[0]["hostname"]), self.log_file_name
+                    self.error = True
+                    return True
+            except self.paramiko_exception as erreur:
+                self.package = str(erreur) + ", error while checking enable: {}\n".format(self.device[2]), self.log_file_name
                 self.error = True
                 return True
 
@@ -108,45 +122,47 @@ class my_shell:
         t = default_timer()
         try:
             self.channel.send(cmd + "\n")
+            while True:
+                if default_timer() - t >= seconds:
+                    self.package = "The device took too much time to process command: {}, {}\n".format(cmd, self.device[0]["hostname"]), self.log_file_name
+                    self.error = True
+                    return True
+                self.get_info()
+                if self.s.endswith("#") or self.s.endswith("# "):
+                    return False
         except self.paramiko_exception as error:
             self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", self.log_file_name
             self.error = True
             return True
-        while True:
-            if default_timer() - t >= seconds:
-                self.package = "The device took too much time to process command: {}, {}\n".format(cmd, self.device[0]["hostname"]), self.log_file_name
-                self.error = True
-                return True
-            self.get_info()
-            if self.s.endswith("#") or self.s.endswith("# "):
-                return False
 
+    #Methode pour envoyer la commande "show context"
     def show_context(self):
         t = default_timer()
         a = ""
         try:
             self.channel.send("show context\n")
+            while True:
+                if default_timer() - t >= 60:
+                    self.package = "The device took too much time to process command: \"show context\": {}\n".format(self.device[0]["hostname"]), self.log_file_name
+                    self.error = True
+                    return True
+                while self.channel.recv_ready():
+                    a += self.channel.recv(9999).decode("UTF-8")
+                    time.sleep(0.1)
+                if a != "" and a.count("\n") > 2:
+                    lines = a.split("\n")
+                    if len(lines) < 3:
+                        self.package = "Length of lines < 3: {}\n".format(self.device[2]), self.log_file_name
+                        self.error = True
+                        return True
+                    self.list_of_context = [re.split('\s+', x)[1] for x in lines if ( x[0] == ' ' and x[1].isalnum())]
+                    return False
         except self.paramiko_exception as error:
             self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", self.log_file_name
             self.error = True
             return True
-        while True:
-            if default_timer() - t >= 60:
-                self.package = "The device took too much time to process command: \"show context\": {}\n".format(self.device[0]["hostname"]), self.log_file_name
-                self.error = True
-                return True
-            while self.channel.recv_ready():
-                a += self.channel.recv(9999).decode("UTF-8")
-                time.sleep(0.1)
-            if a != "" and a.count("\n") > 2:
-                lines = a.split("\n")
-                if len(lines) < 3:
-                    self.package = "Length of lines < 3: {}\n".format(self.device[2]), self.log_file_name
-                    self.error = True
-                    return True
-                self.list_of_context = [re.split('\s+', x)[1] for x in lines if ( x[0] == ' ' and x[1].isalnum())]
-                return False
 
+    #Methode pour envoyer la commansde "netcfg".
     def send_netcfg(self, context = "admin"):
         t = default_timer()
         try:
@@ -161,6 +177,10 @@ class my_shell:
                 while not self.channel.recv_ready():
                     continue
                 self.get_info()
+            lines = self.s.split("\n")
+            if "/" not in lines[-1] or self.s.endswith("act#") or self.s.endswith("act# ") or self.s.endswith("act>") or self.s.endswith("act> ") or self.s.endswith("FW-DC-INTERNE> "):
+                self.set_package("Save of conexts on {} was successful\n".format(self.device[2]), log_file_name)
+                return True
             return False
         except self.paramiko_exception as error:
             self.package = str(error) + " Context: {}, Firewall: {}".format(context, self.device[2]), self.log_file_name
@@ -172,18 +192,18 @@ class my_shell:
         t = default_timer()
         try:
             self.channel.send("en\n")
+            while True:
+                if default_timer() - t >= 60:
+                    self.package = "The device took too much time to process command: \"en\", {}\n".format(self.device[0]["hostname"]), self.log_file_name
+                    self.error = True
+                    return True
+                self.get_info()
+                if self.s.endswith("Password: ") or self.s.endswith("password: ") or self.s.endswith("password:") or self.s.endswith("Password:") or self.s.endswith("#") or self.s.endswith("# "):
+                    return False
         except self.paramiko_exception as error:
             self.package = str(error) + ", replace package on queue" ": " + self.device[0]["hostname"] + "\n", self.log_file_name
             self.error = True
             return True
-        while True:
-            if default_timer() - t >= 60:
-                self.package = "The device took too much time to process command: \"en\", {}\n".format(self.device[0]["hostname"]), self.log_file_name
-                self.error = True
-                return True
-            self.get_info()
-            if self.s.endswith("Password: ") or self.s.endswith("password: ") or self.s.endswith("password:") or self.s.endswith("Password:") or self.s.endswith("#") or self.s.endswith("# "):
-                return False
 
     #Methode pour entrer en mode enable. si l'output du shell ne se termine pas par "#" alors on est pas en mode enable.
     def enable(self, secret):
@@ -247,9 +267,9 @@ def run_printer(queue, number, queue_device, log_file_name, directory_name):
         print("\b ", end = "\r", flush = True)
         print("equipment remaining: {} errors: {}".format(count, errors), end = "", flush = True)
 
-# Fonction qui realise la connexion.
+# Fonction qui realise la connexion et envoi les commandes.
 def process(device, paramiko_exception, log_file_name):
-    liste_prompt = ["admin>", "admin> ", "admin#", "admin# ", "active>", "active> ", "active#", "active# ", "act>", "act> ", "act#", "act# "]
+    liste_prompt = ["admin>", "admin> ", "admin#", "admin# ", "active>", "active> ", "active#", "active# ", "act>", "act> ", "act#", "act# ", "FW-DC-INTERNE> "]
     #On instancie un objet "console" de type my_shell, le constructeur est appele (voir plus haut)
     console = my_shell(device, paramiko_exception, log_file_name)
     #On se connecte avec notre objet et si il y a une erreur, on met le package sur la queue.
@@ -260,12 +280,13 @@ def process(device, paramiko_exception, log_file_name):
         return console
     #On recoit les infos du shell.
     console.get_info()
+    #On verifie que le prompt est le bon
     if console.check_admin(liste_prompt):
         return console
     #On se connecte en mode enable.
     if console.enable(device[1]):
         return console
-    #On envoit la commande "conf t".
+    #On envoit la commande "netcfg".
     if console.send_netcfg():
         return console
     if console.send_command("changeto system", 60):
@@ -394,7 +415,7 @@ for i, slice_of_devices in enumerate(my_list_of_lists):
 print_queue = queue.Queue()
 
 #On lance le thread ecrivain
-p = Process(target = run_printer, args = (print_queue, number_of_slices, dictionary_of_queues_first_layer, log_file_name, directory_name))
+p = Process(target = run_printer, args = (print_queue, len(devices), dictionary_of_queues_first_layer, log_file_name, directory_name))
 p.daemon = True
 p.start()
 
